@@ -1,0 +1,8 @@
+name: Example adversary
+description: For demo standalone agent
+atomic_ordering:
+- e8017c46-acb8-400c-a4b5-b3362b5b5baa
+- 85341c8c-4ecb-4579-8f53-43e3e91d7617
+- 47abe1f5-55a5-46cc-8cad-506dac8ea6d9
+adversary_id: 1d3ed5ab-cfd8-4e42-9cda-ab375e9b75d6
+objective: 495a9828-cab1-44dd-a0ca-66e58177d8cc
