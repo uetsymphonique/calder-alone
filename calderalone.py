@@ -44,6 +44,7 @@ def setup_logger(level=logging.DEBUG):
     logging.getLogger("markdown_it").setLevel(logging.WARNING)
     logging.captureWarnings(True)
 
+
 def get_parser():
     parser = argparse.ArgumentParser(
         description=ASCII_BANNER,
@@ -68,6 +69,7 @@ def get_parser():
     )
 
     return parser
+
 
 async def load_data(services):
     data_svc = services["data_svc"]
@@ -115,6 +117,7 @@ async def load_data(services):
                    module='plugins.stockpile.app.obfuscators.steganography')
     )
 
+
 if __name__ == "__main__":
     sys.path.append("")
 
@@ -144,5 +147,6 @@ if __name__ == "__main__":
     planner = services["data_svc"].ram["planners"][0]
     objective = services["data_svc"].ram["objectives"][0]
     agent = Agent(platform="linux", executors=("sh",))
-    operation = Operation(adversary=adversary, planner=planner, source=source, agents=[agent], obfuscator=args.obfuscator)
+    operation = Operation(adversary=adversary, planner=planner, source=source, agents=[agent],
+                          obfuscator=args.obfuscator)
     loop.run_until_complete(operation.run(services))
