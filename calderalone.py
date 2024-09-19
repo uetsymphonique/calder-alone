@@ -1,12 +1,14 @@
+import argparse
 import asyncio
 import glob
 import logging
+import sys
 
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.theme import Theme
 
-from app.ascii_banner import no_color
+from app.ascii_banner import no_color, ASCII_BANNER, print_rich_banner
 from app.objects.c_agent import Agent
 from app.objects.c_obfuscator import Obfuscator
 from app.objects.c_objective import Objective
@@ -42,6 +44,30 @@ def setup_logger(level=logging.DEBUG):
     logging.getLogger("markdown_it").setLevel(logging.WARNING)
     logging.captureWarnings(True)
 
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description=ASCII_BANNER,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "-l",
+        "--log",
+        dest="logLevel",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level",
+        default="INFO",
+    )
+
+    parser.add_argument(
+        "-O",
+        "--obfuscate",
+        dest="obfuscator",
+        choices=["plain-text", "base64", "base64jumble", "caesar cipher", "base64noPadding", "steganography"],
+        help="Set the obfuscator",
+        default="plain-text",
+    )
+
+    return parser
 
 async def load_data(services):
     data_svc = services["data_svc"]
@@ -90,13 +116,17 @@ async def load_data(services):
     )
 
 if __name__ == "__main__":
-    setup_logger()
+    sys.path.append("")
+
+    parser = get_parser()
+    args = parser.parse_args()
+    setup_logger(getattr(logging, args.logLevel))
     main_config_path = "conf/default.yml"
     BaseWorld.apply_config("main", BaseWorld.strip_yml(main_config_path)[0])
     logging.info("Using main config from %s" % main_config_path)
     BaseWorld.apply_config("agents", BaseWorld.strip_yml("conf/agents.yml")[0])
     BaseWorld.apply_config("payloads", BaseWorld.strip_yml("conf/payloads.yml")[0])
-    # print_rich_banner()
+    print_rich_banner()
 
     services = dict(
         data_svc=DataService(),
@@ -110,17 +140,9 @@ if __name__ == "__main__":
     loop.run_until_complete(load_data(services))
     adversary = services["data_svc"].ram["adversaries"][0]
     abilities = services["data_svc"].ram["abilities"]
-    # print(adversary.display)
     source = services["data_svc"].ram["sources"][0]
-    # print(source.display)
     planner = services["data_svc"].ram["planners"][0]
-    # print(planner.display)
     objective = services["data_svc"].ram["objectives"][0]
-    # print(objective.display)
     agent = Agent(platform="linux", executors=("sh",))
-    # print(agent.__dict__)
-    operation = Operation(adversary=adversary, planner=planner, source=source, agents=[agent], obfuscator='base64')
-    capabilities = loop.run_until_complete(agent.capabilities(abilities))
-    # [print(f'{a.display}') for a in capabilities]
+    operation = Operation(adversary=adversary, planner=planner, source=source, agents=[agent], obfuscator=args.obfuscator)
     loop.run_until_complete(operation.run(services))
-    # print(operation.source.display)

@@ -72,7 +72,8 @@ class PlanningService(BasePlanningService):
         await self.update_stopping_condition_met(planner, operation)
         return await self._stop_bucket_exhaustion(planner, operation, condition_stop)
 
-    async def default_next_bucket(self, current_bucket, state_machine):
+    @staticmethod
+    async def default_next_bucket(current_bucket, state_machine):
         """Returns next bucket in the state machine
 
         Determine and return the next bucket as specified in the given
@@ -89,7 +90,8 @@ class PlanningService(BasePlanningService):
         idx = (state_machine.index(current_bucket) + 1) % len(state_machine)
         return state_machine[idx]
 
-    async def add_ability_to_bucket(self, ability, bucket):
+    @staticmethod
+    async def add_ability_to_bucket(ability, bucket):
         """Adds bucket tag to ability
 
         :param ability: Ability to add bucket to
@@ -162,7 +164,7 @@ class PlanningService(BasePlanningService):
         ao = operation.adversary.atomic_ordering
         # print(f'Planning service will get links for operation: {operation.name} with adversary: {operation.adversary}')
         abilities = await self.get_service('data_svc') \
-                              .locate('abilities', match=dict(ability_id=tuple(ao)))
+            .locate('abilities', match=dict(ability_id=tuple(ao)))
         if buckets:
             # buckets specified - get all links for given buckets,
             # (still in underlying atomic adversary order)
@@ -276,7 +278,8 @@ class PlanningService(BasePlanningService):
         """
         return sorted(links, key=lambda k: (-k.score))
 
-    async def _stop_bucket_exhaustion(self, planner, operation, condition_stop):
+    @staticmethod
+    async def _stop_bucket_exhaustion(planner, operation, condition_stop):
         """Determine whether to continue running the bucket.
 
         Returns True if:
@@ -328,10 +331,9 @@ class PlanningService(BasePlanningService):
         :rtype: list(Link)
         """
         agent_cleanup_links = []
-        if agent.trusted:
-            agent_cleanup_links = await self._generate_cleanup_links(operation=operation,
-                                                                     agent=agent,
-                                                                     link_status=operation.link_status())
+        agent_cleanup_links = await self._generate_cleanup_links(operation=operation,
+                                                                 agent=agent,
+                                                                 link_status=operation.link_status())
         return agent_cleanup_links
 
     async def _generate_new_links(self, operation, agent, abilities, link_status):

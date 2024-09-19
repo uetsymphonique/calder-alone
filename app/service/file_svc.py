@@ -1,19 +1,15 @@
-import asyncio
 import base64
 import binascii
-import copy
 import json
+import logging
 import os
-import subprocess
 import sys
 
-
-from multidict import CIMultiDict
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-
+from multidict import CIMultiDict
 
 from app.utility.base_service import BaseService
 from app.utility.payload_encoder import xor_file, xor_bytes
@@ -62,10 +58,10 @@ class FileService(BaseService):
         contents = await self._perform_data_encoding(headers, contents)
         return file_path, contents, display_name
 
-    async def save_file(self, filename, payload, target_dir, encrypt=True, encoding=None):
+    async def save_file(self, filename, payload, target_dir, encrypt=True, encoding=None, event_logs=False):
         if encoding:
             payload = await self._decode_contents(payload, encoding)
-        self._save(os.path.join(target_dir, filename), payload, encrypt)
+        self._save(os.path.join(target_dir, filename), payload, encrypt, event_logs)
 
     async def create_exfil_sub_directory(self, dir_name):
         path = os.path.join(self.get_config('exfil_dir'), dir_name)
@@ -83,22 +79,6 @@ class FileService(BaseService):
         if not os.path.exists(path):
             os.makedirs(path)
         return path
-
-    async def save_multipart_file_upload(self, request, target_dir, encrypt=True):
-        try:
-            reader = await request.multipart()
-            headers = CIMultiDict(request.headers)
-            while True:
-                field = await reader.next()
-                if not field:
-                    break
-                _, filename = os.path.split(field.filename)
-                await self.save_file(filename, bytes(await field.read()), target_dir,
-                                     encrypt=encrypt, encoding=headers.get('x-file-encoding'))
-                self.log.debug('Uploaded file %s/%s' % (target_dir, filename))
-            return web.Response()
-        except Exception as e:
-            self.log.debug('Exception uploading file: %s' % e)
 
     async def find_file_path(self, name, location=''):
         for plugin in await self.data_svc.locate('plugins', match=dict(enabled=True)):
@@ -147,30 +127,6 @@ class FileService(BaseService):
         """
         if callable(func):  # Check to see if the passed function is already a callable function
             self.special_payloads[name] = func
-
-    async def compile_go(self, platform, output, src_fle, arch='amd64', ldflags='-s -w', cflags='', buildmode='',
-                         build_dir='.', loop=None):
-        env = copy.copy(os.environ)
-        env['GOARCH'] = arch
-        env['GOOS'] = platform
-        if cflags:
-            for cflag in cflags.split(' '):
-                name, value = cflag.split('=')
-                env[name] = value
-
-        args = ['go', 'build']
-        if buildmode:
-            args.append(buildmode)
-        if ldflags:
-            args.extend(['-ldflags', "{}".format(ldflags)])
-
-        args.extend(['-o', output, src_fle])
-
-        loop = loop if loop else asyncio.get_event_loop()
-        try:
-            await loop.run_in_executor(None, lambda: subprocess.check_output(args, cwd=build_dir, env=env))
-        except subprocess.CalledProcessError as e:
-            self.log.warning('Problem building golang executable {}: {} '.format(src_fle, e))
 
     def get_payload_name_from_uuid(self, payload):
         for t in ['standard_payloads', 'special_payloads']:
@@ -230,11 +186,98 @@ class FileService(BaseService):
             return filename
         return '%s.xored' % filename
 
-    def _save(self, filename, content, encrypt=True):
+    def _save(self, filename, content, encrypt=True, event_logs=False):
         if encrypt and (self.encryptor and self.encrypt_output):
             content = bytes(FILE_ENCRYPTION_FLAG, 'utf-8') + self.encryptor.encrypt(content)
         with open(filename, 'wb') as f:
             f.write(content)
+        if event_logs:
+            with open(filename, 'r') as file:
+                data = json.load(file)
+                with open(filename.replace("operation", "attire"), 'w') as attire_file:
+                    json.dump(self._event_logs_to_attire(data), attire_file, indent=4)
+                logging.info(f'Wrote event logs for operation to disk at {filename.replace("operation", "attire")}')
+
+    @staticmethod
+    def _mapping_field_to_attire(link, procedure_order):
+        procedure = {
+            "procedure-name": link["ability_metadata"]["ability_name"],
+            "procedure-description": link["ability_metadata"]["ability_description"],
+            "procedure-id": {
+                "type": "guid",
+                "id": link["ability_metadata"]["ability_id"]
+            },
+            "mitre-technique-id": link["attack_metadata"]["technique_id"],
+            "order": procedure_order,
+            "steps": [
+                {
+                    "command": link["command"],
+                    "executor": link["executor"],
+                    "order": procedure_order,
+                    "time-start": link["delegated_timestamp"],
+                    "time-stop": link["finished_timestamp"],
+                    "output": [
+                        {
+                            "content": link["output"]["stdout"] if "output" in link else "empty",
+                            "level": "no info",
+                            "type": "no info"
+                        }
+                    ]
+                }
+            ]
+        }
+        return procedure
+
+    def _event_logs_to_attire(self, data):
+        return_dict = {
+            "attire-version": "1.1",
+            "execution-data": {
+                "execution-command": "calder-alone",
+                "execution-id": "",
+                "execution-source": "Calder-alone",
+                "execution-category": {
+                    "name": "Calder-alone",
+                    "abbreviation": "cdal"
+                },
+                "target": {
+                    "host": "vcs",
+                    "ip": "0.0.0.0",
+                    "path": "PATH=C:",
+                    "user": "vcs-purple-team"
+                },
+                "time-generated": self.get_current_timestamp()
+            },
+            "procedures": []
+        }
+        procedure_list = []
+        for order, link in enumerate(data):
+            # print(link)
+            if link["ability_metadata"]["ability_name"] not in procedure_list:
+                procedure = self._mapping_field_to_attire(link, len(procedure_list))
+                procedure_list.append(link["ability_metadata"]["ability_name"])
+                return_dict["procedures"].append(procedure)
+            else:
+                for procedure in return_dict["procedures"]:
+                    if procedure["procedure-name"] == link["ability_metadata"]["ability_name"]:
+                        # logging.info("log")
+                        procedure["steps"].append(
+                            {
+                                "command": link["command"],
+                                "executor": link["executor"],
+                                "order": order,
+                                "time-start": link["delegated_timestamp"],
+                                "time-stop": link["finished_timestamp"],
+                                "output": [
+                                    {
+                                        "content": link["output"]["stdout"] if "output" in link else "empty",
+                                        "level": "no info",
+                                        "type": "no info"
+                                    }
+                                ]
+                            }
+                        )
+        # print(return_dict)
+        return return_dict
 
     def _read(self, filename):
         with open(filename, 'rb') as f:
@@ -298,11 +341,3 @@ class FileService(BaseService):
         else:
             self.log.error('Failed to decode contents. Returning original contents')
             return contents
-
-
-def _go_vars(arch, platform):
-    return '%s GOARCH=%s %s GOOS=%s' % (_get_header(), arch, _get_header(), platform)
-
-
-def _get_header():
-    return 'SET' if os.name == 'nt' else ''

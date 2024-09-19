@@ -1,9 +1,10 @@
 import asyncio
 import json
 import logging
+import os
 import uuid
-from base64 import b64decode
 from copy import deepcopy
+from datetime import datetime, timezone
 from enum import Enum
 from importlib import import_module
 from typing import Any, Iterable
@@ -15,9 +16,7 @@ from app.service.data_svc import DataService
 from app.service.executing_svc import ExecutingService
 from app.service.file_svc import FileService
 from app.service.learning_svc import LearningService
-from app.utility.base_knowledge_svc import BaseKnowledgeService
 from app.utility.base_object import BaseObject
-from app.utility.base_planning_svc import BasePlanningService
 from app.utility.base_service import BaseService
 
 
@@ -72,6 +71,12 @@ class Operation(BaseObject):
     def has_link(self, link_id):
         return any(lnk.id == link_id for lnk in self.potential_links + self.chain)
 
+    async def has_fact(self, trait, value):
+        for f in await self.all_facts():
+            if f.trait == trait and f.value == value:
+                return True
+        return False
+
     async def apply(self, link):
         while self.state != self.states['RUNNING']:
             if self.state == self.states['RUN_ONE_LINK']:
@@ -96,6 +101,7 @@ class Operation(BaseObject):
                 await knowledge_svc_handle.add_relationship(r)
 
     async def run(self, services):
+        self.start = datetime.now(timezone.utc)
         await self._init_source()
         # print(self.source.display)
         data_svc = services.get('data_svc')
@@ -103,20 +109,93 @@ class Operation(BaseObject):
         try:
             await self.cede_control_to_planner(services)
 
-            # await self.write_event_logs_to_disk(services.get('file_svc'), data_svc, output=True)
+            await self.write_event_logs_to_disk(services.get('file_svc'), data_svc, output=True)
         except Exception as e:
             logging.error(e, exc_info=True)
+
+    async def write_event_logs_to_disk(self, file_svc, data_svc, output=False):
+        event_logs = await self.event_logs(file_svc, data_svc, output=output)
+        event_logs_dir = await file_svc.create_exfil_sub_directory('%s/event_logs' % self.get_config('reports_dir'))
+        file_name = 'operation_%s.json' % self.id
+        await self._write_logs_to_disk(event_logs, file_name, event_logs_dir, file_svc)
+        logging.debug('Wrote event logs for operation %s to disk at %s/%s' % (self.name, event_logs_dir, file_name))
+
+    @staticmethod
+    async def _write_logs_to_disk(logs, file_name, dest_dir, file_svc):
+        logs_dumps = json.dumps(logs) + os.linesep
+        await file_svc.save_file(file_name, logs_dumps.encode(), dest_dir, encrypt=False, event_logs=True)
+
+    async def event_logs(self, file_svc, data_svc, output=False):
+        # Ignore discarded / high visibility links that did not actually run.
+        return [await self._convert_link_to_event_log(step, file_svc, data_svc, output=output) for step in self.chain
+                if not step.can_ignore()]
+
+    async def _convert_link_to_event_log(self, link, file_svc, data_svc, output=False):
+        event_dict = dict(command=self.decode_bytes(link.command),
+                          plaintext_command=self.decode_bytes(link.plaintext_command),
+                          delegated_timestamp=link.decide.strftime(self.TIME_FORMAT),
+                          collected_timestamp=link.collect.strftime(self.TIME_FORMAT) if link.collect else None,
+                          finished_timestamp=link.finish,
+                          status=link.status,
+                          platform=link.executor.platform,
+                          executor=link.executor.name,
+                          pid=link.pid,
+                          agent_metadata=await self._get_agent_info_for_event_log(link.paw, data_svc),
+                          ability_metadata=self._get_ability_metadata_for_event_log(link.ability),
+                          operation_metadata=self._get_operation_metadata_for_event_log(),
+                          attack_metadata=self._get_attack_metadata_for_event_log(link.ability))
+        if output and link.output:
+            results = self.decode_bytes(file_svc.read_result_file(link.unique))
+            event_dict['output'] = json.loads(results.replace('\\r\\n', '').replace('\\n', ''))
+        if link.agent_reported_time:
+            event_dict['agent_reported_time'] = link.agent_reported_time.strftime(self.TIME_FORMAT)
+        return event_dict
+
+    @staticmethod
+    async def _get_agent_info_for_event_log(agent_paw, data_svc):
+        agent_search_results = await data_svc.locate('agents', match=dict(paw=agent_paw))
+        if not agent_search_results:
+            return {}
+        else:
+            # We expect only one agent per paw.
+            agent = agent_search_results[0]
+            return dict(paw=agent.paw,
+                        group=agent.group,
+                        architecture=agent.architecture,
+                        username=agent.username,
+                        location=agent.location,
+                        pid=agent.pid,
+                        ppid=agent.ppid,
+                        privilege=agent.privilege,
+                        host=agent.host,
+                        contact=agent.contact,
+                        created=agent.created.strftime(BaseObject.TIME_FORMAT))
+
+    @staticmethod
+    def _get_ability_metadata_for_event_log(ability):
+        return dict(ability_id=ability.ability_id,
+                    ability_name=ability.name,
+                    ability_description=ability.description)
+
+    def _get_operation_metadata_for_event_log(self):
+        return dict(operation_name=self.name,
+                    operation_start=self.start.strftime(self.TIME_FORMAT),
+                    operation_adversary=self.adversary.name)
+
+    @staticmethod
+    def _get_attack_metadata_for_event_log(ability):
+        return dict(tactic=ability.tactic,
+                    technique_name=ability.technique_name,
+                    technique_id=ability.technique_id)
 
     async def wait_for_links_completion(self, link_ids):
         for link_id in link_ids:
             link = [link for link in self.chain if link.id == link_id][0]
             executing_svc = ExecutingService()
             result = executing_svc.running(link)
-            # print(result.display)
             await self._save(result, link)
             if link.can_ignore():
                 self.add_ignored_link(link.id)
-            member = [member for member in self.agents if member.paw == link.paw][0]
             while not (link.finish or link.can_ignore()):
                 await asyncio.sleep(5)
 
@@ -137,8 +216,7 @@ class Operation(BaseObject):
             encoded_command_results = self.encode_string(command_results)
             # print(encoded_command_results)
 
-
-            # FileService().write_result_file(result.id, encoded_command_results)
+            FileService().write_result_file(result.id, encoded_command_results)
 
             if link.executor.parsers:
                 await loop.create_task(link.parse(self, result.output))
@@ -148,7 +226,7 @@ class Operation(BaseObject):
 
     async def _postprocess_link_result(self, result, link):
         if link.ability.HOOKS and link.executor.name in link.ability.HOOKS:
-            return self.encode_string(await link.ability.HOOKS[link.executor.name].postprocess(b64decode(result)))
+            return self.encode_string(await link.ability.HOOKS[link.executor.name].postprocess(result))
         return result
 
     def add_ignored_link(self, link_id):
@@ -163,8 +241,8 @@ class Operation(BaseObject):
     async def cede_control_to_planner(self, services):
         planner = await self._get_planning_module(services)
         await planner.execute()
-        for fact in services["knowledge_svc"].loaded_knowledge_module.fact_ram["facts"]:
-            print(fact.display)
+        # for fact in services["knowledge_svc"].loaded_knowledge_module.fact_ram["facts"]:
+        #     print(fact.display)
         while not await self.is_closeable():
             await asyncio.sleep(10)
         await self.close(services)
@@ -204,21 +282,11 @@ class Operation(BaseObject):
         self.finish = self.get_current_timestamp()
 
     async def _cleanup_operation(self, services):
-        cleanup_count = 0
         for member in self.agents:
             for link in await services.get('planning_svc').get_cleanup_links(self, member):
                 self.add_link(link)
-                cleanup_count += 1
-        # if cleanup_count:
-        #     await self._safely_handle_cleanup(cleanup_count)
-
-    # async def _safely_handle_cleanup(self, cleanup_link_count):
-    #     try:
-    #         await asyncio.wait_for(self.wait_for_completion(),
-    #                                timeout=self.base_timeout + self.link_timeout * cleanup_link_count)
-    #     except asyncio.TimeoutError:
-    #         logging.warning(f"[OPERATION] - unable to close {self.name} cleanly due to timeout. Forcibly terminating.")
-    #         self.state = self.states['OUT_OF_TIME']
+                executing_svc = ExecutingService()
+                executing_svc.running(link)
 
     async def _save_new_source(self, services):
         def fact_to_dict(f):
@@ -234,7 +302,7 @@ class Operation(BaseObject):
                            for link in self.chain for r in link.relationships]
         )
         new_source = await services.get('rest_svc').persist_source(dict(access=[self.access]), data)
-        print(new_source)
+        # print(new_source)
 
     class States(Enum):
         RUNNING = 'running'

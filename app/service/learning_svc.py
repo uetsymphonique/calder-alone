@@ -1,10 +1,7 @@
 import glob
 import itertools
-import logging
 import re
-from base64 import b64decode
 from importlib import import_module
-from xxlimited_35 import error
 
 from app.objects.secondclass.c_link import update_scores
 from app.objects.secondclass.c_relationship import Relationship

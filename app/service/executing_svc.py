@@ -1,11 +1,9 @@
 import logging
 import subprocess
-from base64 import b64encode
 from datetime import datetime, timezone
 
 from app.objects.secondclass.c_link import Link
 from app.objects.secondclass.c_result import Result
-from app.service.data_svc import DataService
 from app.utility.base_service import BaseService
 
 
@@ -22,8 +20,14 @@ class ExecutingService(BaseService):
 
         command = link.display["command"]
         shell = link.executor.name
-        print(f'Running ability: {link.display["ability"]["name"]}\nCommand: {command} will be ran in {shell}')
+        os = link.executor.platform
+        print(f'--------------------------------------------------------\n'
+              f'Running procedure: {link.display["ability"]["name"]}\n'
+              f'{link.display["ability"]["tactic"].capitalize()}: '
+              f'{link.display["ability"]["technique_name"]} ({link.display["ability"]["technique_id"]})\n'
+              f'Description: {link.display["ability"]["description"]}\n\n{os}-{shell}> {command}')
         result = self.run_command(command, shell)
+        print(f'\nResult:\n{result.stdout or result.stderr}\nExit code: {result.returncode}')
         return Result(id=link.id, output=result.stdout,
                       stderr=result.stderr, exit_code=result.returncode,
                       agent_reported_time=datetime.now(timezone.utc))

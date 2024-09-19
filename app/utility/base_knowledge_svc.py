@@ -2,15 +2,11 @@ import copy
 import os
 import pickle
 import shutil
-import tarfile
 import uuid
 
-from datetime import datetime
-
-import app.service.data_svc
-from app.utility.base_service import BaseService
 from app.objects.secondclass.c_fact import Fact, WILDCARD_STRING
 from app.objects.secondclass.c_relationship import Relationship
+from app.utility.base_service import BaseService
 
 # DATA_BACKUP_DIR = app.service.data_svc.DATA_BACKUP_DIR
 FACT_STORE_PATH = f"data{os.path.sep}fact_store"
@@ -24,7 +20,7 @@ class BaseKnowledgeService(BaseService):
         self.fact_ram = copy.deepcopy(self.schema)
 
     # -- Fact API --
-    async def _add_fact(self, fact, constraints=None):
+    async def add_fact(self, fact, constraints=None):
         """
         Add a fact to the internal store
         :param fact: Fact to add
@@ -38,19 +34,19 @@ class BaseKnowledgeService(BaseService):
             if constraints:
                 self.fact_ram['constraints'][fact._knowledge_id] = constraints
 
-    async def _update_fact(self, criteria, updates):
+    async def update_fact(self, criteria, updates):
         """
         Update a fact in the internal store
         :param criteria: dictionary containing fields to match on
         :param updates: dictionary containing fields to replace
         """
-        matches = await self._get_facts(criteria)
+        matches = await self.get_facts(criteria)
         for match in matches:
             for k, v in updates.items():
                 if getattr(match, k, False):
                     setattr(match, k, v)
 
-    async def _get_facts(self, criteria, restrictions=None):
+    async def get_facts(self, criteria, restrictions=None):
         """
         Retrieve a fact from the internal store
         :param criteria: dictionary containing fields to match on
@@ -59,18 +55,18 @@ class BaseKnowledgeService(BaseService):
         complete_list = await self._locate('facts', query=criteria)
         return await self._apply_restrictions(complete_list, restrictions)
 
-    async def _delete_fact(self, criteria):
+    async def delete_fact(self, criteria):
         """
         Delete a fact from the internal store
         :param criteria: dictionary containing fields to match on
         """
         return await self._remove('facts', criteria)
 
-    async def _get_meta_facts(self, meta_fact=None, agent=None, group=None):
+    async def get_meta_facts(self, meta_fact=None, agent=None, group=None):
         # Returns the complete set of facts associated with a meta-fact construct
         raise NotImplementedError
 
-    async def _get_fact_origin(self, fact):
+    async def get_fact_origin(self, fact):
         """
         Identify the place where a fact originated, either the source that loaded it or its original link
         :param fact: Fact to get origin for (can be either a trait string or a full blown fact)
@@ -78,7 +74,7 @@ class BaseKnowledgeService(BaseService):
         """
         workspace = copy.deepcopy(fact)
         if not getattr(workspace, 'links', False):
-            fact_search = await self._get_facts(dict(trait=workspace))
+            fact_search = await self.get_facts(dict(trait=workspace))
             if fact_search:
                 workspace = fact_search[0]
             else:
@@ -93,7 +89,7 @@ class BaseKnowledgeService(BaseService):
 
     # -- Relationships API --
 
-    async def _get_relationships(self, criteria, restrictions=None):
+    async def get_relationships(self, criteria, restrictions=None):
         """
         Retrieve relationships from the internal store
         :param criteria: dictionary containing fields to match on
@@ -102,7 +98,7 @@ class BaseKnowledgeService(BaseService):
         complete_list = await self._locate('relationships', query=criteria)
         return await self._apply_restrictions(complete_list, restrictions)
 
-    async def _add_relationship(self, relationship, constraints=None):
+    async def add_relationship(self, relationship, constraints=None):
         """
         Add a relationship to the internal store
         :param relationship: Relationship object to add
@@ -116,13 +112,13 @@ class BaseKnowledgeService(BaseService):
             if constraints:
                 self.fact_ram['constraints'][relationship._knowledge_id] = constraints
 
-    async def _update_relationship(self, criteria, updates):
+    async def update_relationship(self, criteria, updates):
         """
         Update a relationship in the internal store
         :param criteria: dictionary containing fields to match on
         :param updates: dictionary containing fields to modify
         """
-        matches = await self._get_relationships(criteria)
+        matches = await self.get_relationships(criteria)
         for match in matches:
             for k, v in updates.items():
                 if getattr(match, k, "eMpTy") != "eMpTy":
@@ -133,7 +129,7 @@ class BaseKnowledgeService(BaseService):
                     else:
                         setattr(match, k, v)
 
-    async def _delete_relationship(self, criteria):
+    async def delete_relationship(self, criteria):
         """
         Remove a relationship from the internal store
         :param criteria: dictionary containing fields to match on
@@ -142,7 +138,7 @@ class BaseKnowledgeService(BaseService):
 
     # --- Rule API ---
 
-    async def _add_rule(self, rule, constraints=None):
+    async def add_rule(self, rule, constraints=None):
         """
         Add a rule to the internal store
         :param rule: Rule object to add
@@ -160,7 +156,7 @@ class BaseKnowledgeService(BaseService):
             if constraints:
                 self.fact_ram['constraints'][rule._knowledge_id] = constraints
 
-    async def _get_rules(self, criteria, restrictions=None):
+    async def get_rules(self, criteria, restrictions=None):
         """
         Retrieve rules from the internal store
         :param criteria: dictionary containing fields to match on
@@ -169,7 +165,7 @@ class BaseKnowledgeService(BaseService):
         complete_list = [x for x in self.fact_ram['rules'] if await self._check_rule(x, criteria, True)]
         return await self._apply_restrictions(complete_list, restrictions)
 
-    async def _delete_rule(self, criteria):
+    async def delete_rule(self, criteria):
         """
         Remove a rule from the internal store
         :param criteria: dictionary containing fields to match on
@@ -254,29 +250,7 @@ class BaseKnowledgeService(BaseService):
         else:
             os.remove(path)
 
-    @staticmethod
-    def _destroy():
-        """
-        Reset the caldera data directory and server state.
-
-        This creates a gzipped tarball backup of the data files tracked by caldera.
-        Paths are preserved within the tarball, with all files having "data/" as the
-        root.
-
-        :return: None
-        """
-        if not os.path.exists(DATA_BACKUP_DIR):
-            os.mkdir(DATA_BACKUP_DIR)
-
-        timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
-        tarball_path = os.path.join(DATA_BACKUP_DIR, f'backup-{timestamp}.tar.gz')
-
-        with tarfile.open(tarball_path, 'w:gz') as tarball:
-            if os.path.isfile(FACT_STORE_PATH):
-                tarball.add(FACT_STORE_PATH)
-                BaseKnowledgeService._delete_file(FACT_STORE_PATH)
-
-    async def _save_state(self):
+    async def save_state(self):
         """
         Saves the current internal store state to disk
 
@@ -285,7 +259,7 @@ class BaseKnowledgeService(BaseService):
         await self.get_service('file_svc').save_file(FACT_STORE_PATH.split(os.path.sep)[1], pickle.dumps(self.fact_ram),
                                                      FACT_STORE_PATH.split(os.path.sep)[0])
 
-    async def _restore_state(self):
+    async def restore_state(self):
         """
         Loads the internal store state from disk
 
@@ -314,11 +288,11 @@ class BaseKnowledgeService(BaseService):
         :return: function handle to the correct loader function for the associated object type
         """
         if key == 'facts':
-            return self._add_fact
+            return self.add_fact
         elif key == 'relationships':
-            return self._add_relationship
+            return self.add_relationship
         elif key == 'rules':
-            return self._add_rule
+            return self.add_rule
 
     async def _apply_restrictions(self, complete_list, restrictions):
         """
@@ -327,6 +301,7 @@ class BaseKnowledgeService(BaseService):
         :param restrictions: The restrictions to be applied (checked against the constraints internal store)
         :return: filtered list of input objects
         """
+
         def _check_restrictions(existing_limitations, desired_limitations):
             for restriction_name, restriction_value in desired_limitations:
                 if restriction_name in existing_limitations:

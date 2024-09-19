@@ -183,11 +183,3 @@ class DataService(BaseService):
             self.log.error('Found multiple fact sources with the same id', fact_source_id)
             return []
         return fact_sources[0].facts
-
-    @staticmethod
-    def fix_missing_padding(data):
-        missing_padding = len(data) % 4
-        if missing_padding != 0:
-            # Add missing `=` padding
-            data += '=' * (4 - missing_padding)
-        return data

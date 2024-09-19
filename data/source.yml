@@ -1,25 +1,70 @@
 facts:
-- trait: ad.domain.name
-  value: oz
-- trait: initial.target.host
-  value: 10.0.0.7
-- trait: initial.user.name
-  value: judy
-- trait: initial.user.password
-  value: Passw0rd!
-- trait: second.target.host
-  value: 10.0.0.8
-- trait: second_host.user.name
-  value: bill
-- trait: second_host.user.password
-  value: Fall2021
-- trait: ad.domain.full_name
-  value: oz.local
-- trait: dc.target.host
-  value: 10.0.0.4
-- trait: domain.admin.name
-  value: vfleming
-- trait: domain.admin.password
-  value: q27VYN8xflPcYumbLMit
-id: 68908278-cf73-5145-9fe9-ebff1c533b06
-name: Wizard Spider (Emu)
+- collected_by: []
+  created: '2024-08-27T03:00:24Z'
+  limit_count: -1
+  links: []
+  name: file.sensitive.extension
+  origin_type: IMPORTED
+  relationships: []
+  score: 1
+  source: ed32b9c3-9593-4c33-b0db-e2007315096b
+  technique_id: null
+  trait: file.sensitive.extension
+  unique: file.sensitive.extensionwav
+  value: wav
+- collected_by: []
+  created: '2024-08-27T03:00:24Z'
+  limit_count: -1
+  links: []
+  name: file.sensitive.extension
+  origin_type: IMPORTED
+  relationships: []
+  score: 1
+  source: ed32b9c3-9593-4c33-b0db-e2007315096b
+  technique_id: null
+  trait: file.sensitive.extension
+  unique: file.sensitive.extensionyml
+  value: yml
+- collected_by: []
+  created: '2024-08-27T03:00:24Z'
+  limit_count: -1
+  links: []
+  name: file.sensitive.extension
+  origin_type: IMPORTED
+  relationships: []
+  score: 1
+  source: ed32b9c3-9593-4c33-b0db-e2007315096b
+  technique_id: null
+  trait: file.sensitive.extension
+  unique: file.sensitive.extensionpng
+  value: png
+- collected_by: []
+  created: '2024-08-27T03:00:24Z'
+  limit_count: -1
+  links: []
+  name: server.malicious.url
+  origin_type: IMPORTED
+  relationships: []
+  score: 1
+  source: ed32b9c3-9593-4c33-b0db-e2007315096b
+  technique_id: null
+  trait: server.malicious.url
+  unique: server.malicious.urlkeyloggedsite.com
+  value: keyloggedsite.com
+id: ed32b9c3-9593-4c33-b0db-e2007315096b
+name: basic
+plugin: stockpile
+relationships: []
+rules:
+- action: DENY
+  match: .*
+  trait: file.sensitive.extension
+- action: ALLOW
+  match: png
+  trait: file.sensitive.extension
+- action: ALLOW
+  match: yml
+  trait: file.sensitive.extension
+- action: ALLOW
+  match: wav
+  trait: file.sensitive.extension

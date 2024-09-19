@@ -25,6 +25,8 @@ class LogicalPlanner:
             # Each agent will run the next available step.
             await self.operation.wait_for_links_completion(links_to_use)
         else:
+            # print(f'No more links to use')
+            self.operation.state = self.operation.states['FINISHED']
             # No more links to run.
             self.next_bucket = None
 
