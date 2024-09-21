@@ -1,8 +1,13 @@
-name: Example adversary
-description: For demo standalone agent
+adversary_id: 1a98b8e6-18ce-4617-8cc5-e65a1a9d490e
 atomic_ordering:
-- e8017c46-acb8-400c-a4b5-b3362b5b5baa
-- 85341c8c-4ecb-4579-8f53-43e3e91d7617
-- 47abe1f5-55a5-46cc-8cad-506dac8ea6d9
-adversary_id: 1d3ed5ab-cfd8-4e42-9cda-ab375e9b75d6
+- 6469befa-748a-4b9c-a96d-f191fde47d89
+- 90c2efaa-8205-480d-8bb6-61d90dbaf81b
+- 4e97e699-93d7-4040-b5a3-2e906a58199e
+- 300157e5-f4ad-4569-b533-9d1fa0e74d74
+- ea713bc4-63f0-491c-9a6f-0b01d560b87e
+description: An adversary to steal sensitive files
+has_repeatable_abilities: false
+name: Thief
 objective: 495a9828-cab1-44dd-a0ca-66e58177d8cc
+plugin: stockpile
+tags: []

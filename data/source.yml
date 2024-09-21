@@ -1,6 +1,6 @@
 facts:
 - collected_by: []
-  created: '2024-08-27T03:00:24Z'
+  created: '2024-09-21T04:26:46Z'
   limit_count: -1
   links: []
   name: file.sensitive.extension
@@ -13,7 +13,7 @@ facts:
   unique: file.sensitive.extensionwav
   value: wav
 - collected_by: []
-  created: '2024-08-27T03:00:24Z'
+  created: '2024-09-21T04:26:46Z'
   limit_count: -1
   links: []
   name: file.sensitive.extension
@@ -26,7 +26,7 @@ facts:
   unique: file.sensitive.extensionyml
   value: yml
 - collected_by: []
-  created: '2024-08-27T03:00:24Z'
+  created: '2024-09-21T04:26:46Z'
   limit_count: -1
   links: []
   name: file.sensitive.extension
@@ -39,7 +39,7 @@ facts:
   unique: file.sensitive.extensionpng
   value: png
 - collected_by: []
-  created: '2024-08-27T03:00:24Z'
+  created: '2024-09-21T04:26:46Z'
   limit_count: -1
   links: []
   name: server.malicious.url
