@@ -146,7 +146,11 @@ class Operation(BaseObject):
                           attack_metadata=self._get_attack_metadata_for_event_log(link.ability))
         if output and link.output:
             results = self.decode_bytes(file_svc.read_result_file(link.unique))
-            event_dict['output'] = json.loads(results.replace('\\r\\n', '').replace('\\n', ''))
+            try:
+                event_dict['output'] = json.loads(results.replace('\\r\\n', '').replace('\\n', ''))
+            except json.JSONDecodeError:
+                event_dict['output'] = json.loads(
+                    results.replace('\\r\\n', '').replace('\\n', '').replace("\\", "\\\\"))
         if link.agent_reported_time:
             event_dict['agent_reported_time'] = link.agent_reported_time.strftime(self.TIME_FORMAT)
         return event_dict

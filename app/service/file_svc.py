@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import sys
+import uuid
 
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.backends import default_backend
@@ -198,8 +199,31 @@ class FileService(BaseService):
                     json.dump(self._event_logs_to_attire(data), attire_file, indent=4)
                 logging.info(f'Wrote event logs for operation to disk at {filename.replace("operation", "attire")}')
 
-    @staticmethod
-    def _mapping_field_to_attire(link, procedure_order):
+    def _create_step(self, link, order):
+        output_entries = []
+        if "output" in link:
+            if link["output"]["stdout"]:
+                output_entries.append({
+                    "content": link["output"]["stdout"],
+                    "level": "STDOUT",
+                    "type": "console"
+                })
+            if link["output"]["stderr"]:
+                output_entries.append({
+                    "content": link["output"]["stderr"],
+                    "level": "STDERR",
+                    "type": "console"
+                })
+        return {
+            "command": link["command"],
+            "executor": link["executor"],
+            "order": order,
+            "time-start": link["delegated_timestamp"].replace("Z", ".000Z"),
+            "time-stop": (link["finished_timestamp"] or link["delegated_timestamp"]).replace("Z", ".000Z"),
+            "output": output_entries
+        }
+
+    def _mapping_field_to_attire(self, link, procedure_order, order):
         procedure = {
             "procedure-name": link["ability_metadata"]["ability_name"],
             "procedure-description": link["ability_metadata"]["ability_description"],
@@ -210,20 +234,7 @@ class FileService(BaseService):
             "mitre-technique-id": link["attack_metadata"]["technique_id"],
             "order": procedure_order,
             "steps": [
-                {
-                    "command": link["command"],
-                    "executor": link["executor"],
-                    "order": procedure_order,
-                    "time-start": link["delegated_timestamp"],
-                    "time-stop": link["finished_timestamp"],
-                    "output": [
-                        {
-                            "content": link["output"]["stdout"] if "output" in link else "empty",
-                            "level": "no info",
-                            "type": "no info"
-                        }
-                    ]
-                }
+                self._create_step(link, order)
             ]
         }
         return procedure
@@ -232,12 +243,12 @@ class FileService(BaseService):
         return_dict = {
             "attire-version": "1.1",
             "execution-data": {
-                "execution-command": "calder-alone",
-                "execution-id": "",
+                "execution-command": "python calderalone.py",
+                "execution-id": str(uuid.uuid4()),
                 "execution-source": "Calder-alone",
                 "execution-category": {
                     "name": "Calder-alone",
-                    "abbreviation": "cdal"
+                    "abbreviation": "CDA"
                 },
                 "target": {
                     "host": "vcs",
@@ -245,38 +256,20 @@ class FileService(BaseService):
                     "path": "PATH=C:",
                     "user": "vcs-purple-team"
                 },
-                "time-generated": self.get_current_timestamp()
+                "time-generated": self.get_current_timestamp().replace("Z", ".000Z")
             },
             "procedures": []
         }
         procedure_list = []
         for order, link in enumerate(data):
-            # print(link)
             if link["ability_metadata"]["ability_name"] not in procedure_list:
-                procedure = self._mapping_field_to_attire(link, len(procedure_list))
+                procedure = self._mapping_field_to_attire(link, len(procedure_list), order)
                 procedure_list.append(link["ability_metadata"]["ability_name"])
                 return_dict["procedures"].append(procedure)
             else:
                 for procedure in return_dict["procedures"]:
                     if procedure["procedure-name"] == link["ability_metadata"]["ability_name"]:
-                        # logging.info("log")
-                        procedure["steps"].append(
-                            {
-                                "command": link["command"],
-                                "executor": link["executor"],
-                                "order": order,
-                                "time-start": link["delegated_timestamp"],
-                                "time-stop": link["finished_timestamp"],
-                                "output": [
-                                    {
-                                        "content": link["output"]["stdout"] if "output" in link else "empty",
-                                        "level": "no info",
-                                        "type": "no info"
-                                    }
-                                ]
-                            }
-                        )
-        # print(return_dict)
+                        procedure["steps"].append(self._create_step(link, order))
         return return_dict
 
     def _read(self, filename):

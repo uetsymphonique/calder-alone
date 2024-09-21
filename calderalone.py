@@ -68,6 +68,22 @@ def get_parser():
         default="plain-text",
     )
 
+    parser.add_argument(
+        "-P",
+        "--platform",
+        dest="platform",
+        choices=["windows", "linux"],
+        help="Set executing platform",
+        default="linux",
+    )
+
+    parser.add_argument(
+        "-E",
+        "--executors",
+        dest="executors",
+        help="Set executors",
+    )
+
     return parser
 
 
@@ -146,7 +162,7 @@ if __name__ == "__main__":
     source = services["data_svc"].ram["sources"][0]
     planner = services["data_svc"].ram["planners"][0]
     objective = services["data_svc"].ram["objectives"][0]
-    agent = Agent(platform="linux", executors=("sh",))
+    agent = Agent(platform=args.platform, executors=args.executors.split(", "))
     operation = Operation(adversary=adversary, planner=planner, source=source, agents=[agent],
                           obfuscator=args.obfuscator)
     loop.run_until_complete(operation.run(services))
