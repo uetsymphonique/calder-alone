@@ -63,7 +63,7 @@ def get_parser():
         "-O",
         "--obfuscate",
         dest="obfuscator",
-        choices=["plain-text", "base64", "base64jumble", "caesar cipher", "base64noPadding", "steganography"],
+        choices=["plain-text", "base64", "base64jumble", "caesar cipher", "base64noPadding"],
         help="Set the obfuscator",
         default="plain-text",
     )
@@ -143,8 +143,8 @@ if __name__ == "__main__":
     main_config_path = "conf/default.yml"
     BaseWorld.apply_config("main", BaseWorld.strip_yml(main_config_path)[0])
     logging.info("Using main config from %s" % main_config_path)
-    BaseWorld.apply_config("agents", BaseWorld.strip_yml("conf/agents.yml")[0])
-    BaseWorld.apply_config("payloads", BaseWorld.strip_yml("conf/payloads.yml")[0])
+    # BaseWorld.apply_config("agents", BaseWorld.strip_yml("conf/agents.yml")[0])
+    # BaseWorld.apply_config("payloads", BaseWorld.strip_yml("conf/payloads.yml")[0])
     print_rich_banner()
 
     services = dict(

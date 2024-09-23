@@ -262,14 +262,15 @@ class FileService(BaseService):
         }
         procedure_list = []
         for order, link in enumerate(data):
-            if link["ability_metadata"]["ability_name"] not in procedure_list:
-                procedure = self._mapping_field_to_attire(link, len(procedure_list), order)
-                procedure_list.append(link["ability_metadata"]["ability_name"])
-                return_dict["procedures"].append(procedure)
-            else:
-                for procedure in return_dict["procedures"]:
-                    if procedure["procedure-name"] == link["ability_metadata"]["ability_name"]:
-                        procedure["steps"].append(self._create_step(link, order))
+            if link["delegated_timestamp"]:
+                if link["ability_metadata"]["ability_name"] not in procedure_list:
+                    procedure = self._mapping_field_to_attire(link, len(procedure_list), order)
+                    procedure_list.append(link["ability_metadata"]["ability_name"])
+                    return_dict["procedures"].append(procedure)
+                else:
+                    for procedure in return_dict["procedures"]:
+                        if procedure["procedure-name"] == link["ability_metadata"]["ability_name"]:
+                            procedure["steps"].append(self._create_step(link, order))
         return return_dict
 
     def _read(self, filename):
