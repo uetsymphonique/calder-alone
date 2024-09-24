@@ -32,3 +32,32 @@ Agent requires installation of `python3` and some dependencies. It can be instal
 
 - Install dependencies:
 `pip3 install rich pyyaml mutidict cryptography marshmallow marshmallow-enum`
+
+# Running script
+
+- Instruction for running: `python calderalone.py --help`
+```
+usage: calderalone.py [-h] [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [-O {plain-text,base64,base64jumble,caesar cipher,base64noPadding}] [-P {windows,linux}] [-E EXECUTORS]
+
+
+ ██████╗ █████╗ ██╗     ██████╗ ███████╗██████╗  █████╗
+██╔════╝██╔══██╗██║     ██╔══██╗██╔════╝██╔══██╗██╔══██╗
+██║     ███████║██║     ██║  ██║█████╗  ██████╔╝███████║
+██║     ██╔══██║██║     ██║  ██║██╔══╝  ██╔══██╗██╔══██║
+╚██████╗██║  ██║███████╗██████╔╝███████╗██║  ██║██║  ██║
+ ╚═════╝╚═╝  ╚═╝╚══════╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
+
+
+options:
+  -h, --help            show this help message and exit
+  -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
+                        Set the logging level
+  -O {plain-text,base64,base64jumble,caesar cipher,base64noPadding}, --obfuscate {plain-text,base64,base64jumble,caesar cipher,base64noPadding}
+                        Set the obfuscator
+  -P {windows,linux}, --platform {windows,linux}
+                        Set executing platform
+  -E EXECUTORS, --executors EXECUTORS
+                        Set executors
+
+```
+- Running: `python calderalone.py -l DEBUG -P windows -E "psh, cmd" -O base64`
