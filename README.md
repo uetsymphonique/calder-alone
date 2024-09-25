@@ -31,7 +31,7 @@ Agent requires installation of `python3` and some dependencies. It can be instal
 - Windows: https://www.python.org/downloads/
 
 - Install dependencies:
-`pip3 install rich pyyaml mutidict cryptography marshmallow marshmallow-enum`
+`pip3 install rich pyyaml multidict cryptography marshmallow marshmallow-enum`
 
 # Running script
 
