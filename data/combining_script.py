@@ -1,5 +1,6 @@
 import os
 import yaml
+import uuid
 
 # Paths to the abilities folder and the adversary file
 abilities_folder = 'abilities'
@@ -29,6 +30,32 @@ def merge_abilities(abilities_folder):
     return merged_abilities
 
 
+def update_ids_and_atomic_ordering(adversary_data, abilities):
+    """
+    Updates the 'id' field of the adversary and each ability in the list with a new UUID.
+    Synchronizes the 'atomic_ordering' list with the new ability IDs.
+    """
+    # Update adversary id
+    adversary_data['id'] = str(uuid.uuid4())
+
+    # Create a mapping from old ability ids to new UUIDs
+    id_mapping = {}
+
+    # Update each ability's id and store the mapping
+    for ability in abilities:
+        new_id = str(uuid.uuid4())
+        id_mapping[ability['id']] = new_id
+        ability['id'] = new_id
+
+    # Synchronize atomic_ordering with new ability ids
+    if 'atomic_ordering' in adversary_data:
+        adversary_data['atomic_ordering'] = [
+            id_mapping.get(old_id, old_id) for old_id in adversary_data['atomic_ordering']
+        ]
+
+    return adversary_data, abilities
+
+
 def create_updated_adversary_file(adversary_file, output_file, abilities):
     """
     Creates a new YAML file with the adversary object, adding the merged abilities.
@@ -41,8 +68,11 @@ def create_updated_adversary_file(adversary_file, output_file, abilities):
     if not isinstance(adversary_data, dict):
         raise ValueError("The adversary.yml file must contain an adversary object (dictionary).")
 
+    # Update the ids of the adversary and abilities, and sync atomic_ordering
+    adversary_data, updated_abilities = update_ids_and_atomic_ordering(adversary_data, abilities)
+
     # Add merged abilities to the adversary object
-    adversary_data['abilities'] = abilities
+    adversary_data['abilities'] = updated_abilities
 
     # Write the updated adversary data to the new output file
     with open(output_file, 'w', encoding='utf-8') as f:
