@@ -38,12 +38,13 @@ class ExecutingService(BaseService):
             'psh': ['powershell', '-Command'],
             'pwsh': ['pwsh', '-Command'],
             'sh': ['sh', '-c'],
+            'cmd': ['cmd', '/c'],  # Added support for cmd shell type
             'proc': None  # Run directly without any shell
         }
 
         # Check if shell type is valid
         if shell_type not in shell_map:
-            raise ValueError(f"Invalid shell type '{shell_type}'. Choose from 'psh', 'sh', 'pwsh', or 'proc'.")
+            raise ValueError(f"Invalid shell type '{shell_type}'. Choose from 'psh', 'sh', 'pwsh', 'cmd', or 'proc'.")
 
         # Prepare the command to execute
         if shell_map[shell_type] is None:  # 'proc' case, direct execution
