@@ -51,7 +51,7 @@ def get_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
-        "-l",
+        "-L",
         "--log",
         dest="logLevel",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
@@ -82,6 +82,15 @@ def get_parser():
         "--executors",
         dest="executors",
         help="Set executors",
+    )
+
+    parser.add_argument(
+        "-C",
+        "--cleanup",
+        dest="cleanup",
+        choices=["y", "n"],
+        help="Set cleanup",
+        default="y",
     )
 
     return parser
@@ -165,4 +174,4 @@ if __name__ == "__main__":
     agent = Agent(platform=args.platform, executors=args.executors.split(", "))
     operation = Operation(adversary=adversary, planner=planner, source=source, agents=[agent],
                           obfuscator=args.obfuscator)
-    loop.run_until_complete(operation.run(services))
+    loop.run_until_complete(operation.run(services, args.cleanup.lower() == 'y'))
