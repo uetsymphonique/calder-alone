@@ -1,0 +1,8 @@
+colorama==0.4.6
+cryptography==43.0.1
+marshmallow==3.22.0
+marshmallow-enum==1.5.1
+multidict==6.1.0
+PyYAML==6.0.2
+rich==13.8.1
+tqdm==4.66.5
