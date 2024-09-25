@@ -93,6 +93,14 @@ def get_parser():
         default="y",
     )
 
+    parser.add_argument(
+        "-T",
+        "--timeout",
+        dest="timeout",
+        type=int,
+        help="Set timeout",
+        default=600,
+    )
     return parser
 
 
@@ -173,5 +181,5 @@ if __name__ == "__main__":
     objective = services["data_svc"].ram["objectives"][0]
     agent = Agent(platform=args.platform, executors=args.executors.split(", "))
     operation = Operation(adversary=adversary, planner=planner, source=source, agents=[agent],
-                          obfuscator=args.obfuscator)
+                          obfuscator=args.obfuscator, timeout=args.timeout)
     loop.run_until_complete(operation.run(services, args.cleanup.lower() == 'y'))
