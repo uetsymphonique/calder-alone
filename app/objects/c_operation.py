@@ -100,14 +100,14 @@ class Operation(BaseObject):
                 r.origin = self.source.id
                 await knowledge_svc_handle.add_relationship(r)
 
-    async def run(self, services):
+    async def run(self, services, cleanup=True):
         self.start = datetime.now(timezone.utc)
         await self._init_source()
         # print(self.source.display)
         data_svc = services.get('data_svc')
         await self._load_objective(data_svc)
         try:
-            await self.cede_control_to_planner(services)
+            await self.cede_control_to_planner(services, cleanup)
 
             await self.write_event_logs_to_disk(services.get('file_svc'), data_svc, output=True)
         except Exception as e:
@@ -242,14 +242,14 @@ class Operation(BaseObject):
             obj = await data_svc.locate('objectives', match=dict(name='default'))
         self.objective = deepcopy(obj[0])
 
-    async def cede_control_to_planner(self, services):
+    async def cede_control_to_planner(self, services, cleanup=True):
         planner = await self._get_planning_module(services)
         await planner.execute()
         # for fact in services["knowledge_svc"].loaded_knowledge_module.fact_ram["facts"]:
         #     print(fact.display)
         while not await self.is_closeable():
             await asyncio.sleep(10)
-        await self.close(services)
+        await self.close(services, cleanup)
 
     async def is_closeable(self):
         if await self.is_finished():
@@ -278,8 +278,9 @@ class Operation(BaseObject):
         return planning_module.LogicalPlanner(self, services.get('planning_svc'), **self.planner.params,
                                               stopping_conditions=self.planner.stopping_conditions)
 
-    async def close(self, services):
-        await self._cleanup_operation(services)
+    async def close(self, services, cleanup=True):
+        if cleanup:
+            await self._cleanup_operation(services)
         await self._save_new_source(services)
         if self.state not in [self.states['FINISHED'], self.states['OUT_OF_TIME']]:
             self.state = self.states['FINISHED']
