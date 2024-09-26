@@ -47,7 +47,11 @@ class DataService(BaseService):
     async def load_ability_file(self, filename, access=BaseWorld.Access.RED):
         for entries in self.strip_yml(filename):
             for ab in entries:
-                ability_id = ab.pop('id', None)
+                ability_id = ''
+                if 'id' in ab:
+                    ability_id = ab.pop('id', None)
+                else:
+                    ability_id = ab.pop('ability_id', None)
                 name = ab.pop('name', '')
                 description = ab.pop('description', '')
                 tactic = ab.pop('tactic', None)
