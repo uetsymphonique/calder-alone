@@ -6,3 +6,4 @@ multidict==6.1.0
 PyYAML==6.0.2
 rich==13.8.1
 tqdm==4.66.5
+psutil==6.0.0

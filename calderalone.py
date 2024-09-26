@@ -160,8 +160,8 @@ if __name__ == "__main__":
     main_config_path = "conf/default.yml"
     BaseWorld.apply_config("main", BaseWorld.strip_yml(main_config_path)[0])
     logging.info("Using main config from %s" % main_config_path)
-    # BaseWorld.apply_config("agents", BaseWorld.strip_yml("conf/agents.yml")[0])
-    # BaseWorld.apply_config("payloads", BaseWorld.strip_yml("conf/payloads.yml")[0])
+    BaseWorld.apply_config("agents", BaseWorld.strip_yml("conf/agents.yml")[0])
+    BaseWorld.apply_config("payloads", BaseWorld.strip_yml("conf/payloads.yml")[0])
     print_rich_banner()
 
     services = dict(
@@ -181,5 +181,5 @@ if __name__ == "__main__":
     objective = services["data_svc"].ram["objectives"][0]
     agent = Agent(platform=args.platform, executors=args.executors.split(", "))
     operation = Operation(adversary=adversary, planner=planner, source=source, agents=[agent],
-                          obfuscator=args.obfuscator, timeout=args.timeout)
+                          obfuscator=args.obfuscator)
     loop.run_until_complete(operation.run(services, args.cleanup.lower() == 'y'))

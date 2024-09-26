@@ -22,7 +22,7 @@ from app.utility.base_service import BaseService
 
 class Operation(BaseObject):
     def __init__(self, adversary=None, name="Calder-alone", agents: Iterable[Any] = None, source=None, planner=None,
-                 obfuscator='plain-text', visibility=50, state='running', timeout=600):
+                 obfuscator='plain-text', visibility=50, state='running'):
         super().__init__()
         self.id = str(uuid.uuid4())
         self.name = name
@@ -41,7 +41,6 @@ class Operation(BaseObject):
         self.state = state
         self.base_timeout = 180
         self.link_timeout = 30
-        self.timeout = timeout
         self.autonomous = True
         if source:
             self.rules = source.rules
@@ -197,7 +196,7 @@ class Operation(BaseObject):
         for link_id in link_ids:
             link = [link for link in self.chain if link.id == link_id][0]
             executing_svc = ExecutingService()
-            result = executing_svc.running(link, self.timeout)
+            result = executing_svc.running(link)
             await self._save(result, link)
             if link.can_ignore():
                 self.add_ignored_link(link.id)

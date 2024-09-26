@@ -1,14 +1,13 @@
 import itertools
 import logging
 import subprocess
-import threading
 import time
 from datetime import datetime, timezone
 
+import psutil
+from colorama import Fore, init
 from tqdm import tqdm
-from colorama import Fore, Style, init
 
-# Initialize colorama for colored output
 init(autoreset=True)
 
 from app.objects.secondclass.c_link import Link
@@ -20,11 +19,10 @@ class ExecutingService(BaseService):
     def __init__(self):
         self.log = self.add_service('executing_svc', self)
 
-    def running(self, link: Link, timeout=600):
+    def running(self, link: Link) -> Result:
         """
         Executes a command linked to a link and returns the output.
         :param link: Link object
-        :param timeout: Timeout in seconds for the command to complete, default is 600 seconds
         :return: Output of the command
         """
 
@@ -36,7 +34,7 @@ class ExecutingService(BaseService):
               f'{link.display["ability"]["tactic"].capitalize()}: '
               f'{link.display["ability"]["technique_name"]} ({link.display["ability"]["technique_id"]})\n'
               f'Description: {link.display["ability"]["description"]}\n\n{os}-{shell}> {command}')
-        result = self.run_command(command, shell, timeout)
+        result = self.run_command(command, shell)
         logging.debug(f'Result:\n{result.stdout + result.stderr}')
         print(f'Exit code: {result.returncode}')
         return Result(id=link.id, output=result.stdout,
@@ -44,7 +42,19 @@ class ExecutingService(BaseService):
                       agent_reported_time=datetime.now(timezone.utc))
 
     @staticmethod
-    def run_command(command, shell_type, timeout=600) -> subprocess.CompletedProcess or None:
+    def kill_process_and_children(pid):
+        """
+        Kill a process and all its children using psutil.
+        """
+        try:
+            parent = psutil.Process(pid)
+            for child in parent.children(recursive=True):
+                child.kill()
+            parent.kill()
+        except psutil.NoSuchProcess:
+            pass
+
+    def run_command(self, command, shell_type, timeout=1) -> subprocess.CompletedProcess or None:
         shell_map = {
             'psh': ['powershell', '-Command'],
             'pwsh': ['pwsh', '-Command'],
@@ -63,52 +73,54 @@ class ExecutingService(BaseService):
         else:
             cmd = shell_map[shell_type] + [command]
 
-        # Define a function to run the command and capture the output
-        def execute_command():
-            nonlocal result
-            try:
-                result = subprocess.run(cmd, capture_output=True, text=True, shell=False, timeout=timeout)
-            except subprocess.TimeoutExpired:
-                result = subprocess.CompletedProcess(cmd, returncode=-1, stdout='', stderr='Command timed out.')
-            except Exception as e:
-                result = subprocess.CompletedProcess(cmd, returncode=-1, stdout='', stderr=str(e))
+        # Start command execution using Popen
+        try:
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=False)
+        except Exception as e:
+            print(f"\n{Fore.RED}An error occurred during command execution: {e}")
+            return subprocess.CompletedProcess(cmd, returncode=-1, stdout='', stderr=str(e))
 
-        # Start command execution in a separate thread
-        result = None
-        command_thread = threading.Thread(target=execute_command)
         start_time = time.time()
-        command_thread.start()
-
-        # Fake loading with spinner and progress bar during command execution
-        spinner = itertools.cycle(['|', '/', '-', '\\'])
+        spinner = itertools.cycle(['|', '/', '-', '\\'])  # Spinner characters
         logging.debug("Starting command execution...")
 
-        # Use tqdm to create a progress bar with blue color for loading
-        with tqdm(desc=f"{Fore.BLUE}Executing", ncols=75, ascii=True) as pbar:
-            while command_thread.is_alive():
-                command_thread.join(timeout=0.1)  # Wait for a small interval
+        # Create a progress bar using tqdm
+        with tqdm(desc=f"{Fore.BLUE}Loading", ncols=75, ascii=True) as pbar:
+            while True:
+                # Check if the process has completed
+                if process.poll() is not None:
+                    break  # Break the loop if process has finished
+
                 elapsed_time = time.time() - start_time
                 spin_char = next(spinner)  # Get next spinner character
-                # Round elapsed time to 2 decimal places
+
+                # Update the progress bar and set postfix with rounded elapsed time
                 pbar.set_postfix_str(f"{spin_char} {elapsed_time:.2f} s")
                 pbar.update(0.1)  # Increment progress bar slightly with each loop
 
-            # Close the progress bar once the command execution is complete
-            pbar.close()
+                # Check if the elapsed time exceeds the timeout
+                if elapsed_time > timeout:
+                    print(f"\n{Fore.RED}Command timed out after {timeout} seconds.")
+                    self.kill_process_and_children(process.pid)  # Kill the process and all its children
+                    stdout, stderr = process.communicate()  # Capture the remaining output
+                    return subprocess.CompletedProcess(cmd, returncode=-1, stdout=stdout, stderr='Command timed out.')
 
-        # Ensure command thread has finished before exiting
-        command_thread.join()
+                time.sleep(0.1)  # Sleep for a short interval to prevent busy-waiting
+
+        pbar.close()  # Close the progress bar once the command execution is complete
+
+        # Wait for process to complete and capture output
+        stdout, stderr = process.communicate()
+
+        # Create CompletedProcess result to return
+        result = subprocess.CompletedProcess(cmd, returncode=process.returncode, stdout=stdout, stderr=stderr)
 
         # Print the final result after the progress bar has been closed
-        if result:
-            if result.returncode == 0:
-                print(f"{Fore.GREEN}Command executed successfully in {time.time() - start_time:.2f} seconds.")
-            elif result.returncode == -1:
-                print(f"{Fore.RED}{result.stderr}")
-            else:
-                print(f"{Fore.RED}An error occurred during command execution: {result.stderr}")
+        if result.returncode == 0:
+            print(f"{Fore.GREEN}Command executed successfully in {time.time() - start_time:.2f} seconds.")
+        elif result.returncode == -1:
+            print(f"{Fore.RED}{result.stderr}")
         else:
-            print(f"{Fore.RED}Command execution failed or timed out.")
+            print(f"{Fore.RED}An error occurred during command execution: {result.stderr}")
 
         return result
-

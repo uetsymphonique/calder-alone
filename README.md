@@ -18,11 +18,40 @@ To run Caldera along with the Standalone plugin and generate a standalone agent:
 When executing the agent, it must be confirmed that the folder tree is organized correctly. 
 
 E.g.
-
-![img_1.png](img_1.png)
-
-![img.png](img.png)
-
+```
+├── app
+│   ├── learning
+│   │   ├── some .py files here...
+│   ├── objects
+│   │   ├── some .py files here...
+│   ├── planners
+│   │   ├── atomic.py 
+│   │   ├── some .py files here...
+│   ├── service
+│   │   ├── some .py files here...
+│   ├── utility
+│   │   ├── some .py files here...
+│   └── other .py files ...
+├── calderalone.py
+├── conf
+├── data
+│   ├── abilities
+│   │   ├── collection
+│   │   │   ├── 4e97e699-93d7-4040-b5a3-2e906a58199e.yml
+│   │   │   ├── 6469befa-748a-4b9c-a96d-f191fde47d89.yml
+│   │   │   └── ...
+│   │   └── ...
+│   ├── adversary.yml
+│   ├── exfil
+│   │   └── reports
+│   │       └── event_logs
+│   ├── planner.yml
+│   ├── results
+│   ├── source.yml
+│   └── sources
+├── plugins
+└── requirements.txt
+```
 Payloads are stored in the root of agent folder
 
 Agent requires installation of `python3` and some dependencies. It can be installed by using the following:
@@ -38,7 +67,7 @@ Agent requires installation of `python3` and some dependencies. It can be instal
 
 - Instruction for running: `python calderalone.py --help`
 ```
-usage: calderalone.py [-h] [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [-O {plain-text,base64,base64jumble,caesar cipher,base64noPadding}] [-P {windows,linux}] [-E EXECUTORS]
+usage: calderalone.py [-h] [-L {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [-O {plain-text,base64,base64jumble,caesar cipher,base64noPadding}] [-P {windows,linux}] [-E EXECUTORS] [-C {y,n}]
 
 
  ██████╗ █████╗ ██╗     ██████╗ ███████╗██████╗  █████╗
@@ -51,7 +80,7 @@ usage: calderalone.py [-h] [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [-O {plain-t
 
 options:
   -h, --help            show this help message and exit
-  -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
+  -L {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
                         Set the logging level
   -O {plain-text,base64,base64jumble,caesar cipher,base64noPadding}, --obfuscate {plain-text,base64,base64jumble,caesar cipher,base64noPadding}
                         Set the obfuscator
@@ -59,6 +88,8 @@ options:
                         Set executing platform
   -E EXECUTORS, --executors EXECUTORS
                         Set executors
+  -C {y,n}, --cleanup {y,n}
+                        Set cleanup
 
 ```
 - Running: `python calderalone.py -l DEBUG -P windows -E "psh, cmd" -O base64`
