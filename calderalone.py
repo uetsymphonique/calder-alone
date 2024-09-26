@@ -92,15 +92,6 @@ def get_parser():
         help="Set cleanup",
         default="y",
     )
-
-    parser.add_argument(
-        "-T",
-        "--timeout",
-        dest="timeout",
-        type=int,
-        help="Set timeout",
-        default=600,
-    )
     return parser
 
 

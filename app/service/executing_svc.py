@@ -34,7 +34,7 @@ class ExecutingService(BaseService):
               f'{link.display["ability"]["tactic"].capitalize()}: '
               f'{link.display["ability"]["technique_name"]} ({link.display["ability"]["technique_id"]})\n'
               f'Description: {link.display["ability"]["description"]}\n\n{os}-{shell}> {command}')
-        result = self.run_command(command, shell)
+        result = self.run_command(command, shell, link.executor.timeout)
         logging.debug(f'Result:\n{result.stdout + result.stderr}')
         print(f'Exit code: {result.returncode}')
         return Result(id=link.id, output=result.stdout,
