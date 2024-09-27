@@ -60,36 +60,30 @@ Agent requires installation of `python3` and some dependencies. It can be instal
 - Windows: https://www.python.org/downloads/
 
 - Install dependencies:
-  + `pip3 install rich pyyaml multidict cryptography marshmallow marshmallow-enum colorama tqdm`
+  + `pip3 install rich pyyaml multidict cryptography marshmallow marshmallow-enum colorama tqdm psutil`
   + Or `pip3 install -r requirements.txt`
 
 # Running script
 
 - Instruction for running: `python calderalone.py --help`
 ```
-usage: calderalone.py [-h] [-L {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [-O {plain-text,base64,base64jumble,caesar cipher,base64noPadding}] [-P {windows,linux}] [-E EXECUTORS] [-C {y,n}]
-
-
- ██████╗ █████╗ ██╗     ██████╗ ███████╗██████╗  █████╗
-██╔════╝██╔══██╗██║     ██╔══██╗██╔════╝██╔══██╗██╔══██╗
-██║     ███████║██║     ██║  ██║█████╗  ██████╔╝███████║
-██║     ██╔══██║██║     ██║  ██║██╔══╝  ██╔══██╗██╔══██║
-╚██████╗██║  ██║███████╗██████╔╝███████╗██║  ██║██║  ██║
- ╚═════╝╚═╝  ╚═╝╚══════╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
-
-
+usage: calderalone.py [-h] [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [-o {plain-text,base64,base64jumble,caesar cipher,base64noPadding}] [-p {windows,linux}]
+                      [-e EXECUTORS] [-c {y,n}] [-P {User,Elevated}]
+                      
 options:
   -h, --help            show this help message and exit
-  -L {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
+  -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
                         Set the logging level
-  -O {plain-text,base64,base64jumble,caesar cipher,base64noPadding}, --obfuscate {plain-text,base64,base64jumble,caesar cipher,base64noPadding}
+  -o {plain-text,base64,base64jumble,caesar cipher,base64noPadding}, --obfuscate {plain-text,base64,base64jumble,caesar cipher,base64noPadding}
                         Set the obfuscator
-  -P {windows,linux}, --platform {windows,linux}
-                        Set executing platform
-  -E EXECUTORS, --executors EXECUTORS
-                        Set executors
-  -C {y,n}, --cleanup {y,n}
-                        Set cleanup
+  -p {windows,linux}, --platform {windows,linux}
+                        Inform platform
+  -e EXECUTORS, --executors EXECUTORS
+                        Inform available executors
+  -c {y,n}, --cleanup {y,n}
+                        Cleanup operations or not
+  -P {User,Elevated}, --privilege {User,Elevated}
+                        Current privilege of agent
 
 ```
-- Running: `python calderalone.py -l DEBUG -P windows -E "psh, cmd" -O base64`
+- Running: `python calderalone.py -l DEBUG -p windows -e "psh, cmd" -o base64 -c y -P Elevated`
