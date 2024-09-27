@@ -51,7 +51,7 @@ def get_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
-        "-L",
+        "-l",
         "--log",
         dest="logLevel",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
@@ -60,7 +60,7 @@ def get_parser():
     )
 
     parser.add_argument(
-        "-O",
+        "-o",
         "--obfuscate",
         dest="obfuscator",
         choices=["plain-text", "base64", "base64jumble", "caesar cipher", "base64noPadding"],
@@ -69,28 +69,35 @@ def get_parser():
     )
 
     parser.add_argument(
-        "-P",
+        "-p",
         "--platform",
         dest="platform",
         choices=["windows", "linux"],
-        help="Set executing platform",
-        default="linux",
+        help="Inform platform",
     )
 
     parser.add_argument(
-        "-E",
+        "-e",
         "--executors",
         dest="executors",
-        help="Set executors",
+        help="Inform available executors",
     )
 
     parser.add_argument(
-        "-C",
+        "-c",
         "--cleanup",
         dest="cleanup",
         choices=["y", "n"],
-        help="Set cleanup",
+        help="Cleanup operations or not",
         default="y",
+    )
+    parser.add_argument(
+        "-P",
+        "--privilege",
+        dest="privilege",
+        choices=["User", "Elevated"],
+        help="Current privilege of agent",
+        default="User",
     )
     return parser
 
@@ -170,7 +177,7 @@ if __name__ == "__main__":
     source = services["data_svc"].ram["sources"][0]
     planner = services["data_svc"].ram["planners"][0]
     objective = services["data_svc"].ram["objectives"][0]
-    agent = Agent(platform=args.platform, executors=args.executors.split(", "))
+    agent = Agent(platform=args.platform, executors=args.executors.split(", "), privilege=args.privilege)
     operation = Operation(adversary=adversary, planner=planner, source=source, agents=[agent],
                           obfuscator=args.obfuscator)
     loop.run_until_complete(operation.run(services, args.cleanup.lower() == 'y'))
