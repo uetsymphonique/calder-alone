@@ -200,7 +200,7 @@ class Operation(BaseObject):
             if link.ability.tactic.lower() == 'privilege-escalation' or True:
                 agents = await self.get_active_agent_by_paw(link.paw)
                 for agent in agents:
-                    agent.privilege = self.Privileges.Elevated if executing_svc.check_privileged(agent.platform) else agent.privilege
+                    agent.privilege = 'Elevated' if executing_svc.check_privileged(agent.platform) else agent.privilege
             await self._save(result, link)
             if link.can_ignore():
                 self.add_ignored_link(link.id)
