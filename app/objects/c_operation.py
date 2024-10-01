@@ -77,6 +77,14 @@ class Operation(BaseObject):
                 return True
         return False
 
+    async def all_relationships(self):
+        knowledge_svc_handle = BaseService.get_service('knowledge_svc')
+        seeded_relationships = []
+        if self.source:
+            seeded_relationships = await knowledge_svc_handle.get_relationships(criteria=dict(origin=self.source.id))
+        learned_relationships = await knowledge_svc_handle.get_relationships(criteria=dict(origin=self.id))
+        return seeded_relationships + learned_relationships
+
     async def apply(self, link):
         while self.state != self.states['RUNNING']:
             if self.state == self.states['RUN_ONE_LINK']:
