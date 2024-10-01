@@ -1,6 +1,9 @@
 import logging
 import subprocess
 import time
+import os
+import platform
+import ctypes
 from datetime import datetime, timezone
 
 from colorama import Fore, init
@@ -94,3 +97,31 @@ class ExecutingService(BaseService):
             print(f"{Fore.RED}An error occurred during command execution: {result.stderr}")
 
         return result
+
+    @staticmethod
+    def is_admin_windows():
+        try:
+            return ctypes.windll.shell32.IsUserAnAdmin()
+        except Exception as e:
+            logging.debug(f"An error occurred during checking Windows privileges: {e}")
+            return False
+
+    @staticmethod
+    def is_root_linux():
+        try:
+            return os.geteuid() == 0
+        except AttributeError as e:
+            logging.debug(f"An error occurred during checking Linux privileges: {e}")
+            return False
+
+    def check_privileged(self, current_platform=platform.system().lower()):
+        ret = False
+        if current_platform == 'windows':
+            ret = self.is_admin_windows()
+        elif current_platform == 'linux':
+            ret = self.is_root_linux()
+        if ret:
+            logging.info(f'Privilege at {current_platform} was escalated successfully')
+        else:
+            logging.warning(f'Privilege at {current_platform} was not escalated')
+        return ret

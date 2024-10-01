@@ -197,11 +197,18 @@ class Operation(BaseObject):
             link = [link for link in self.chain if link.id == link_id][0]
             executing_svc = ExecutingService()
             result = executing_svc.running(link)
+            if link.ability.tactic.lower() == 'privilege-escalation' or True:
+                agents = await self.get_active_agent_by_paw(link.paw)
+                for agent in agents:
+                    agent.privilege = self.Privileges.Elevated if executing_svc.check_privileged(agent.platform) else agent.privilege
             await self._save(result, link)
             if link.can_ignore():
                 self.add_ignored_link(link.id)
             while not (link.finish or link.can_ignore()):
                 await asyncio.sleep(5)
+
+    async def get_active_agent_by_paw(self, paw):
+        return [a for a in self.agents if a.paw == paw]
 
     async def _save(self, result: Result, link: Link):
 
