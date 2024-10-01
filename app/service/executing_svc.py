@@ -1,10 +1,8 @@
-import itertools
 import logging
 import subprocess
 import time
 from datetime import datetime, timezone
 
-import psutil
 from colorama import Fore, init
 from tqdm import tqdm
 
@@ -42,19 +40,7 @@ class ExecutingService(BaseService):
                       agent_reported_time=datetime.now(timezone.utc))
 
     @staticmethod
-    def kill_process_and_children(pid):
-        """
-        Kill a process and all its children using psutil.
-        """
-        try:
-            parent = psutil.Process(pid)
-            for child in parent.children(recursive=True):
-                child.kill()
-            parent.kill()
-        except psutil.NoSuchProcess:
-            pass
-
-    def run_command(self, command, shell_type, timeout=1) -> subprocess.CompletedProcess or None:
+    def run_command(command, shell_type, timeout=1) -> subprocess.CompletedProcess or None:
         shell_map = {
             'psh': ['powershell', '-Command'],
             'pwsh': ['pwsh', '-Command'],
@@ -73,6 +59,10 @@ class ExecutingService(BaseService):
         else:
             cmd = shell_map[shell_type] + [command]
 
+        # Fake loading bar using tqdm
+        for _ in tqdm(range(100), desc=f"{Fore.BLUE}Preparing", ncols=100):
+            time.sleep(0.01)  # Simulate fake loading with sleep
+
         # Start command execution using Popen
         try:
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=False)
@@ -81,45 +71,25 @@ class ExecutingService(BaseService):
             return subprocess.CompletedProcess(cmd, returncode=-1, stdout='', stderr=str(e))
 
         start_time = time.time()
-        spinner = itertools.cycle(['|', '/', '-', '\\'])  # Spinner characters
-        logging.debug("Starting command execution...")
 
-        # Create a progress bar using tqdm
-        with tqdm(desc=f"{Fore.BLUE}Loading", ncols=75, ascii=True) as pbar:
-            while True:
-                # Check if the process has completed
-                if process.poll() is not None:
-                    break  # Break the loop if process has finished
-
-                elapsed_time = time.time() - start_time
-                spin_char = next(spinner)  # Get next spinner character
-
-                # Update the progress bar and set postfix with rounded elapsed time
-                pbar.set_postfix_str(f"{spin_char} {elapsed_time:.2f} s")
-                pbar.update(0.1)  # Increment progress bar slightly with each loop
-
-                # Check if the elapsed time exceeds the timeout
-                if elapsed_time > timeout:
-                    print(f"\n{Fore.RED}Command timed out after {timeout} seconds.")
-                    self.kill_process_and_children(process.pid)  # Kill the process and all its children
-                    stdout, stderr = process.communicate()  # Capture the remaining output
-                    return subprocess.CompletedProcess(cmd, returncode=-1, stdout=stdout, stderr='Command timed out.')
-
-                time.sleep(0.1)  # Sleep for a short interval to prevent busy-waiting
-
-        pbar.close()  # Close the progress bar once the command execution is complete
-
-        # Wait for process to complete and capture output
-        stdout, stderr = process.communicate()
-
-        # Create CompletedProcess result to return
-        result = subprocess.CompletedProcess(cmd, returncode=process.returncode, stdout=stdout, stderr=stderr)
+        try:
+            # Wait for the process to complete with timeout
+            stdout, stderr = process.communicate(timeout=timeout)
+            result = subprocess.CompletedProcess(cmd, returncode=process.returncode, stdout=stdout, stderr=stderr)
+        except subprocess.TimeoutExpired:
+            # If the process exceeds the timeout, terminate it
+            process.kill()
+            stdout, stderr = process.communicate()  # Fetch any output after killing the process
+            result = subprocess.CompletedProcess(cmd, returncode=-1, stdout=stdout,
+                                                 stderr=f"Command timed out after {timeout} seconds.")
+            print(f"{Fore.RED}Command timed out after {timeout} seconds.")
+        except Exception as e:
+            print(f"\n{Fore.RED}An error occurred during command execution: {e}")
+            return subprocess.CompletedProcess(cmd, returncode=-1, stdout='', stderr=str(e))
 
         # Print the final result after the progress bar has been closed
         if result.returncode == 0:
             print(f"{Fore.GREEN}Command executed successfully in {time.time() - start_time:.2f} seconds.")
-        elif result.returncode == -1:
-            print(f"{Fore.RED}{result.stderr}")
         else:
             print(f"{Fore.RED}An error occurred during command execution: {result.stderr}")
 
