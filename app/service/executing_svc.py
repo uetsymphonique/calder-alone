@@ -1,5 +1,8 @@
+import itertools
 import logging
 import subprocess
+import sys
+import threading
 import time
 import os
 import platform
@@ -14,6 +17,15 @@ init(autoreset=True)
 from app.objects.secondclass.c_link import Link
 from app.objects.secondclass.c_result import Result
 from app.utility.base_service import BaseService
+
+
+def spinner_animation():
+    spinner = itertools.cycle(['|', '/', '-', '\\'])
+    while not stop_spinner_event.is_set():
+        sys.stdout.write(f"\r{Fore.YELLOW}Running... {next(spinner)}")
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write("\r")
 
 
 class ExecutingService(BaseService):
@@ -43,7 +55,7 @@ class ExecutingService(BaseService):
                       agent_reported_time=datetime.now(timezone.utc))
 
     @staticmethod
-    def run_command(command, shell_type, timeout=1) -> subprocess.CompletedProcess or None:
+    def run_command(command, shell_type, timeout=1) -> subprocess.CompletedProcess:
         shell_map = {
             'psh': ['powershell', '-Command'],
             'pwsh': ['pwsh', '-Command'],
@@ -62,9 +74,12 @@ class ExecutingService(BaseService):
         else:
             cmd = shell_map[shell_type] + [command]
 
-        # Fake loading bar using tqdm
-        for _ in tqdm(range(100), desc=f"{Fore.BLUE}Preparing", ncols=100):
-            time.sleep(0.01)  # Simulate fake loading with sleep
+        # Simple fake loading using dots
+        print(f"{Fore.CYAN}Preparing to execute command", end="", flush=True)
+        for _ in range(4):
+            time.sleep(0.5)  # Simulate fake loading with sleep
+            print(f"{Fore.CYAN}.", end="", flush=True)
+        print("\n")  # Move to the next line after loading
 
         # Start command execution using Popen
         try:
@@ -74,6 +89,11 @@ class ExecutingService(BaseService):
             return subprocess.CompletedProcess(cmd, returncode=-1, stdout='', stderr=str(e))
 
         start_time = time.time()
+
+        global stop_spinner_event
+        stop_spinner_event = threading.Event()
+        spinner_thread = threading.Thread(target=spinner_animation)
+        spinner_thread.start()
 
         try:
             # Wait for the process to complete with timeout
@@ -85,10 +105,13 @@ class ExecutingService(BaseService):
             stdout, stderr = process.communicate()  # Fetch any output after killing the process
             result = subprocess.CompletedProcess(cmd, returncode=-1, stdout=stdout,
                                                  stderr=f"Command timed out after {timeout} seconds.")
-            print(f"{Fore.RED}Command timed out after {timeout} seconds.")
         except Exception as e:
             print(f"\n{Fore.RED}An error occurred during command execution: {e}")
             return subprocess.CompletedProcess(cmd, returncode=-1, stdout='', stderr=str(e))
+        finally:
+            # Stop the spinner animation
+            stop_spinner_event.set()
+            spinner_thread.join()
 
         # Print the final result after the progress bar has been closed
         if result.returncode == 0:

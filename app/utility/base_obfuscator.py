@@ -17,7 +17,7 @@ class BaseObfuscator(BaseWorld):
                 link.command_hash = hashlib.sha256(str.encode(link.command)).hexdigest()
                 o = self.__getattribute__(link.executor.name)
                 return o(link, **kwargs)
-        except Exception:
-            logging.error('Failed to run BaseObfuscator, returning default decoded bytes')
+        except Exception as e:
+            logging.error(f'Failed to run BaseObfuscator, returning default decoded bytes. Error: {e}')
 
         return self.decode_bytes(link.command)

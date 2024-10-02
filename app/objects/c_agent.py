@@ -1,9 +1,11 @@
+import platform
 import re
 from base64 import b64decode
 from datetime import datetime, timezone
 from typing import Iterable
 
 from app.objects.c_ability import Ability
+from app.service.executing_svc import ExecutingService
 from app.utility.base_object import BaseObject
 
 
@@ -12,20 +14,21 @@ class Agent(BaseObject):
                     exe_name='#{exe_name}', upstream_dest='#{upstream_dest}',
                     payload=re.compile('#{payload:(.*?)}', flags=re.DOTALL))
 
-    def __init__(self, paw=None, host='unknown', username='unknown', architecture='unknown', platform='unknown',
-                 executors=(), privilege='User', origin_link_id='', deadman_enabled=False, host_ip_addresses=None,
+    def __init__(self, paw=None, host='unknown', username='unknown', architecture='unknown',
+                 agent_platform=platform.system().lower(), privilege=None,
+                 executors=(), origin_link_id='', deadman_enabled=False, host_ip_addresses=None,
                  location='unknown'):
         super().__init__()
         self.paw = paw if paw else self.generate_name(6)
         self.host = host
         self.username = username
         self.architecture = architecture
-        self.platform = platform
+        self.platform = agent_platform
         self.group = 'red'
         self.created = datetime.now(timezone.utc)
         self.executors = executors
         self.location = location
-        self.privilege = privilege
+        self.privilege = privilege or 'Elevated' if ExecutingService().check_privileged() else 'User'
         self.links = []
         self.access = self.Access.RED
         self.origin_link_id = origin_link_id

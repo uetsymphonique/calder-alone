@@ -63,17 +63,9 @@ def get_parser():
         "-o",
         "--obfuscate",
         dest="obfuscator",
-        choices=["plain-text", "base64", "base64jumble", "caesar cipher", "base64noPadding"],
+        choices=["plain-text", "base64"],
         help="Set the obfuscator",
         default="plain-text",
-    )
-
-    parser.add_argument(
-        "-p",
-        "--platform",
-        dest="platform",
-        choices=["windows", "linux"],
-        help="Inform platform",
     )
 
     parser.add_argument(
@@ -90,14 +82,6 @@ def get_parser():
         choices=["y", "n"],
         help="Cleanup operations or not",
         default="y",
-    )
-    parser.add_argument(
-        "-P",
-        "--privilege",
-        dest="privilege",
-        choices=["User", "Elevated"],
-        help="Current privilege of agent",
-        default="User",
     )
     return parser
 
@@ -177,7 +161,7 @@ if __name__ == "__main__":
     source = services["data_svc"].ram["sources"][0]
     planner = services["data_svc"].ram["planners"][0]
     objective = services["data_svc"].ram["objectives"][0]
-    agent = Agent(platform=args.platform, executors=args.executors.split(", "), privilege=args.privilege)
+    agent = Agent(executors=args.executors.split(", "))
     operation = Operation(adversary=adversary, planner=planner, source=source, agents=[agent],
                           obfuscator=args.obfuscator)
     loop.run_until_complete(operation.run(services, args.cleanup.lower() == 'y'))

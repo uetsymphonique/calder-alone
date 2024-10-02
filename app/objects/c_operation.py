@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from importlib import import_module
 from typing import Any, Iterable
+from colorama import Fore
 
 from app.objects.secondclass.c_fact import OriginType
 from app.objects.secondclass.c_link import Link
@@ -109,6 +110,7 @@ class Operation(BaseObject):
                 await knowledge_svc_handle.add_relationship(r)
 
     async def run(self, services, cleanup=True):
+        print(f'{Fore.CYAN}############# ADVERSARY PLAN: {self.adversary.name} #############')
         self.start = datetime.now(timezone.utc)
         await self._init_source()
         # print(self.source.display)
@@ -205,7 +207,7 @@ class Operation(BaseObject):
             link = [link for link in self.chain if link.id == link_id][0]
             executing_svc = ExecutingService()
             result = executing_svc.running(link)
-            if link.ability.tactic.lower() == 'privilege-escalation' or True:
+            if link.ability.tactic.lower() == 'privilege-escalation':
                 agents = await self.get_active_agent_by_paw(link.paw)
                 for agent in agents:
                     agent.privilege = 'Elevated' if executing_svc.check_privileged(agent.platform) else agent.privilege
@@ -302,6 +304,7 @@ class Operation(BaseObject):
         self.finish = self.get_current_timestamp()
 
     async def _cleanup_operation(self, services):
+        print(f'{Fore.CYAN}################### CLEANUP OPERATION ###################')
         for member in self.agents:
             for link in await services.get('planning_svc').get_cleanup_links(self, member):
                 self.add_link(link)
