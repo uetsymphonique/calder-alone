@@ -43,10 +43,10 @@ class ExecutingService(BaseService):
         shell = link.executor.name
         os = link.executor.platform
         print(f'--------------------------------------------------------\n'
-              f'Running procedure: {link.display["ability"]["name"]}\n'
+              f'{Fore.YELLOW}Running procedure: {link.display["ability"]["name"]}\n'
               f'{link.display["ability"]["tactic"].capitalize()}: '
               f'{link.display["ability"]["technique_name"]} ({link.display["ability"]["technique_id"]})\n'
-              f'Description: {link.display["ability"]["description"]}\n\n{os}-{shell}> {command}')
+              f'Description: {link.display["ability"]["description"]}\n\n{Fore.MAGENTA}{os}-{shell}> {command}')
         result = self.run_command(command, shell, link.executor.timeout)
         logging.debug(f'Result:\n{result.stdout + result.stderr}')
         print(f'Exit code: {result.returncode}')
