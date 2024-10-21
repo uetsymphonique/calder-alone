@@ -131,6 +131,28 @@ async def load_data(services):
                    description='Obfuscates commands through image-based steganography',
                    module='plugins.stockpile.app.obfuscators.steganography')
     )
+    adversary = services["data_svc"].ram["adversaries"][0]
+    source = services["data_svc"].ram["sources"][0]
+    planner = services["data_svc"].ram["planners"][0]
+    agent = Agent(executors=args.executors.split(", "))
+    await data_svc.store(
+        Operation(
+            adversary=adversary,
+            planner=planner,
+            source=source,
+            obfuscator=args.obfuscator,
+            agents=[agent]
+        )
+    )
+
+def run_tasks(services):
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(load_data(services))
+    operation = services["data_svc"].ram["operations"][0]
+    try:
+        loop.run_until_complete(operation.run(services, args.cleanup.lower() == 'y'))
+    except KeyboardInterrupt:
+        exit()
 
 
 if __name__ == "__main__":
@@ -154,14 +176,4 @@ if __name__ == "__main__":
         rest_svc=RestService()
     )
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(load_data(services))
-    adversary = services["data_svc"].ram["adversaries"][0]
-    abilities = services["data_svc"].ram["abilities"]
-    source = services["data_svc"].ram["sources"][0]
-    planner = services["data_svc"].ram["planners"][0]
-    objective = services["data_svc"].ram["objectives"][0]
-    agent = Agent(executors=args.executors.split(", "))
-    operation = Operation(adversary=adversary, planner=planner, source=source, agents=[agent],
-                          obfuscator=args.obfuscator)
-    loop.run_until_complete(operation.run(services, args.cleanup.lower() == 'y'))
+    run_tasks(services)
