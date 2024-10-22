@@ -21,6 +21,8 @@ class LearningService(BaseService):
     def add_parsers(directory):
         parsers = []
         for filepath in glob.iglob('%s/**.py' % directory):
+            if '__init__.py' in filepath:
+                continue
             module = import_module(filepath.replace('/', '.').replace('\\', '.').replace('.py', ''))
             parsers.append(module.Parser())
         return parsers
