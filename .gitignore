@@ -1,2 +1,7 @@
 data
+__pycache__
 !data/combining_script.py
+*.spec
+build
+dist
+.idea
